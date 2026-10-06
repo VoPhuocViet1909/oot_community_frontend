@@ -1,5 +1,3 @@
-import axios from "axios";
-
 export async function generateVideoThumbnail(file: File): Promise<File> {
   return new Promise((resolve, reject) => {
     const video = document.createElement("video");
@@ -66,24 +64,5 @@ export async function generateVideoThumbnail(file: File): Promise<File> {
       cleanup();
       reject(new Error("Không thể đọc dữ liệu video để tạo thumbnail"));
     };
-  });
-}
-
-export async function handleUploadToS3(
-  file: File,
-  presignedUrl: string,
-  onProgress?: (percent: number) => void,
-): Promise<void> {
-  await axios.put(presignedUrl, file, {
-    headers: {
-      "Content-Type": file.type || "application/octet-stream",
-    },
-    onUploadProgress: (event) => {
-      if (!onProgress) return;
-      const total = event.total || file.size || 1;
-      const loaded = event.loaded || 0;
-      const percent = Math.min(100, Math.round((loaded * 100) / total));
-      onProgress(percent);
-    },
   });
 }

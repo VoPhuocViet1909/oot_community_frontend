@@ -40,17 +40,14 @@ import { useToast } from "../../../contexts/ToastContext";
 import {
   changePassword,
   getCurrentProfile,
-  getPresignedUploadUrl,
   getPresignedViewUrl,
   sendEmailOTP,
   sendPhoneOTP,
   uploadFileDirect,
-  uploadFileToPresignedUrl,
   updateProfile,
   verifyEmailOTP,
   verifyPhoneOTP,
   getFriendsList,
-  buildPublicS3Url,
   createPost,
   getFeedPosts,
   getUserPosts,
@@ -692,15 +689,8 @@ export default function ProfilePage() {
     setIsUploadingAvatar(true);
     try {
       const keyPrefix = `avatars/${user?.id || ""}`;
-      let publicUrl = "";
-      try {
-        const presigned = await getPresignedUploadUrl({ keyPrefix, contentType: file.type });
-        await uploadFileToPresignedUrl(presigned.uploadUrl, file);
-        publicUrl = buildPublicS3Url(presigned.key, presigned.bucket);
-      } catch {
-        const direct = await uploadFileDirect(file, keyPrefix);
-        publicUrl = direct.url || buildPublicS3Url(direct.key, direct.bucket);
-      }
+      const direct = await uploadFileDirect(file, keyPrefix);
+      const publicUrl = direct.url;
 
       await updateProfile({
         avatarUrl: publicUrl,
@@ -729,15 +719,8 @@ export default function ProfilePage() {
     setIsUploadingCover(true);
     try {
       const keyPrefix = `covers/${user?.id || ""}`;
-      let publicUrl = "";
-      try {
-        const presigned = await getPresignedUploadUrl({ keyPrefix, contentType: file.type });
-        await uploadFileToPresignedUrl(presigned.uploadUrl, file);
-        publicUrl = buildPublicS3Url(presigned.key, presigned.bucket);
-      } catch {
-        const direct = await uploadFileDirect(file, keyPrefix);
-        publicUrl = direct.url || buildPublicS3Url(direct.key, direct.bucket);
-      }
+      const direct = await uploadFileDirect(file, keyPrefix);
+      const publicUrl = direct.url;
 
       await updateProfile({
         coverUrl: publicUrl,

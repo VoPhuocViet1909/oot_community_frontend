@@ -5,9 +5,9 @@ import { useSocket } from "../../../contexts/SocketContext";
 
 import { useAuth } from "../../../contexts/AuthContext";
 import { getGroupMessages, sendGroupFileMessage, getReadStatusForMessages } from "../api";
-import { getPresignedUploadUrl } from "../../../api/client";
+import { uploadFileDirect } from "../../../api/client";
 import { useChatStore } from "../store/chatStore";
-import { generateVideoThumbnail, handleUploadToS3 } from "../utils/videoUpload";
+import { generateVideoThumbnail } from "../utils/videoUpload";
 import type { Group, GroupMember } from "../../groups/types";
 import type { DirectMessageItem, StickerData, ReadReceiptReader } from "../../../types";
 
@@ -90,10 +90,6 @@ interface UseGroupChatReturn {
 
 const DEBOUNCE_MS_DEFAULT = 100;
 const MAX_VIDEO_FILE_SIZE = 50 * 1024 * 1024;
-
-function buildS3PublicUrl(bucket: string, key: string): string {
-  return `https://${bucket}.s3.amazonaws.com/${key}`;
-}
 
 /**
  * Hook quản lý chat nhóm với real-time Socket.io.
@@ -838,53 +834,14 @@ export function useGroupChat(
         let finalMsg: DirectMessageItem;
 
         if (isVideo && thumbnailFile) {
-          const [videoPresigned, thumbnailPresigned] = await Promise.all([
-            getPresignedUploadUrl({
-              keyPrefix: "messages/videos",
-              contentType: file.type || "video/mp4",
-            }),
-            getPresignedUploadUrl({
-              keyPrefix: "messages/thumbnails",
-              contentType: thumbnailFile.type || "image/jpeg",
-            }),
+          setUploadProgress(10);
+
+          const [videoResult, thumbnailResult] = await Promise.all([
+            uploadFileDirect(file, "messages/videos"),
+            uploadFileDirect(thumbnailFile, "messages/thumbnails"),
           ]);
 
-          let videoPercent = 0;
-          let thumbnailPercent = 0;
-          const totalBytes = file.size + thumbnailFile.size;
-
-          const updateTotalProgress = () => {
-            const weightedPercent = Math.round(
-              (videoPercent * file.size +
-                thumbnailPercent * thumbnailFile.size) /
-                Math.max(totalBytes, 1),
-            );
-            setUploadProgress(Math.min(100, weightedPercent));
-          };
-
-          await Promise.all([
-            handleUploadToS3(file, videoPresigned.uploadUrl, (percent) => {
-              videoPercent = percent;
-              updateTotalProgress();
-            }),
-            handleUploadToS3(
-              thumbnailFile,
-              thumbnailPresigned.uploadUrl,
-              (percent) => {
-                thumbnailPercent = percent;
-                updateTotalProgress();
-              },
-            ),
-          ]);
-
-          const videoUrl = buildS3PublicUrl(
-            videoPresigned.bucket,
-            videoPresigned.key,
-          );
-          const thumbnailUrl = buildS3PublicUrl(
-            thumbnailPresigned.bucket,
-            thumbnailPresigned.key,
-          );
+          setUploadProgress(90);
 
           const result = await emitSendMessage(
             currentRoomId,
@@ -892,12 +849,12 @@ export function useGroupChat(
             "video",
             [
               {
-                url: videoUrl,
-                thumbnailUrl,
+                url: videoResult.url,
+                thumbnailUrl: thumbnailResult.url,
                 type: "video",
                 size: file.size,
                 mimeType: file.type,
-                key: videoPresigned.key,
+                key: videoResult.key,
               },
             ],
           );

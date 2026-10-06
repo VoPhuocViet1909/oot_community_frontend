@@ -388,12 +388,6 @@ export interface PasswordRecoveryStartResponse {
   expiresIn: number;
 }
 
-export interface PresignedUploadResponse {
-  uploadUrl: string;
-  key: string;
-  bucket: string;
-}
-
 export interface DirectUploadResponse {
   key: string;
   bucket: string;
@@ -523,34 +517,6 @@ export async function getCurrentProfile(): Promise<any> {
   return handleJson<any>(res);
 }
 
-export async function getPresignedUploadUrl(payload: {
-  keyPrefix?: string;
-  contentType: string;
-}): Promise<PresignedUploadResponse> {
-  const res = await authFetch(`${API_BASE}/api/uploads/presigned-url`, {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-  return handleJson<PresignedUploadResponse>(res);
-}
-
-export async function uploadFileToPresignedUrl(
-  uploadUrl: string,
-  file: File,
-): Promise<void> {
-  const res = await fetch(uploadUrl, {
-    method: "PUT",
-    headers: {
-      "Content-Type": file.type || "application/octet-stream",
-    },
-    body: file,
-  });
-
-  if (!res.ok) {
-    throw new Error(`Tải ảnh lên S3 thất bại (${res.status})`);
-  }
-}
-
 export async function uploadFileDirect(
   file: File,
   keyPrefix?: string,
@@ -659,11 +625,6 @@ export async function sendFriendRequestByQR(
 }
 
 // ── Posts & Timeline API ───────────────────────────────────────────────────────
-
-export function buildPublicS3Url(key: string, bucket: string): string {
-  const AWS_REGION = process.env.AWS_REGION || "ap-southeast-2";
-  return `https://${bucket}.s3.${AWS_REGION}.amazonaws.com/${key}`;
-}
 
 export interface PostMedia {
   url: string;

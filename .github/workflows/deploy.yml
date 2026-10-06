@@ -1,0 +1,35 @@
+name: Deploy Next.js Frontend to VM 110
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout source code
+      uses: actions/checkout@v4
+
+    - name: SSH into VM 110 and Deploy
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.VM110_HOST }}
+        username: ${{ secrets.VM110_USERNAME }}
+        key: ${{ secrets.VM110_SSH_KEY }}
+        port: 22
+        script: |
+          export NVM_DIR="$HOME/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+          [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+
+          # Đường dẫn dự án frontend trên VM 110 - chỉnh lại nếu khác
+          cd /home/ubuntu/CNM_ott_community_frontend
+
+          git pull origin main
+          npm install
+          npm run build
+
+          pm2 startOrRestart ecosystem.config.js --update-env
+          pm2 save
